@@ -137,7 +137,7 @@ def main():
         decoder_optimizer = SGD(decoder.parameters(), lr=0.01)
         # 学習開始
         batch_size = 15
-        for epoch in range(15):
+        for epoch in range(150):
             running_loss = 0.0
             for i in range(int(len(trainX) / batch_size)):
                 encoder_optimizer.zero_grad()
@@ -180,7 +180,7 @@ def main():
     cumulativeweight=[] #累積確率を格納するlist
     adab_weight=[] #重みにラベルをつけたlist
     weight=0.0
-    label_reliability=[]
+    label_reliability=[] #信頼度を入れるlist
     for s in range(3):
         for i in range(trainfilenum, filenum, 1):
             j = 0  # カウント用
@@ -232,7 +232,7 @@ def main():
         p_label = adab_weight[i]  # 0~Mの値を取得
         print(p_label)
         # エラー計算 これを各lstmに対してやる
-        for t in range(len(adabX)):
+        for t in range(len(adabX)): #300
             adab_d = torch.tensor(adabX[t]).float()  # 入力 1*10*2
             adab_label = torch.tensor([adabY[t]]).float()  # 出力
             encoder2 = Encoder(2, hidden_size, 2)
@@ -248,8 +248,8 @@ def main():
                 decoder_out_np.append(decoder_out[0][i].data.item())
             decoder_out_np = np.reshape(decoder_out_np, [10, 2])  # 出力をnpに入れたもの
             decoder_out_np = np.array(scaler.inverse_transform(decoder_out_np))  # 正規化を元に戻す
-            adabY[t]=scaler.inverse_transform(adabY[t])
-            errornp=np.abs(decoder_out_np-adabY[t])
+            adabY[t]=scaler.inverse_transform(adabY[t]) #正解データ
+            errornp=np.abs((decoder_out_np-adabY[t])/adabY[t]) #正解と出力の差/正解
             error=sum(errornp)#20個の誤差の合計
             error=sum(error)
             errorlist.append(error)
@@ -257,14 +257,14 @@ def main():
         error_rate = 0.0  # エラー率
         print("誤差" + str(errorlist))
         print(len(errorlist))
-        for i in range(len(errorlist)):
-            if (errorlist[i] > 300):
+        for i in range(len(errorlist)): #エラー率の計算
+            if (errorlist[i] > 15):
                 error_rate += weightlist[i]
-        error_reliability = error_rate * error_rate
-        print(error_reliability)
+        error_reliability = error_rate * error_rate #信頼度の計算
+        print("信頼度"+str(error_reliability))
         weightlist_sum = 0.0
         for i in range(len(weightlist)):  # 重みの更新
-            if (errorlist[i] <= 800):
+            if (errorlist[i] <=15):
                 weightlist[i] = weightlist[i] * error_reliability
             else:
                 weightlist[i] = 1
@@ -276,7 +276,7 @@ def main():
 
     #ここまでadaboast
     #ここからテスト
-    text = "test/xy_188.txt"
+    text = "test/xy_0.txt"
     test_a = np.array([[1.0] * 2] * numline)
     f = open(text)  # ファイルを開く
     alldata = f.read()  # xy_i.txtを全部読み込む
@@ -313,10 +313,13 @@ def main():
         decoder_out = decoder2(att_concat)  # デコーダーを通過
         testnp=[] #lstmの予測1*20を入れるlist
         for j in range(len(decoder_out[0])):
-            testnp.append(decoder_out[0][j].data.item())
+            testnp.append(decoder_out[0][j].data.item()) #正規化されていない
+        testnp = np.reshape(testnp, [10, 2])
+        print("テスト"+str(testnp))
+        testnp = np.array(scaler.inverse_transform(testnp)) #正規化を元に戻す
+        print("testnp"+str(testnp))
         testnp= [g*math.log(1/label_reliability[i][1]) for g in testnp] #各出力結果にlog(1/信頼度)をかける
         testnp = np.reshape(testnp, [10, 2])
-        testnp = np.array(scaler.inverse_transform(testnp))  # 正規化を元に戻す
         print(testnp)
         decoder_out_norm.append(testnp)
     print("norm"+str(decoder_out_norm))
@@ -327,8 +330,8 @@ def main():
             decoder_value+=decoder_out_norm[i]
     decoder_out=decoder_value
     print("10*2で出て欲しい"+str(decoder_out.shape))
+    value=0.0
     for i in range(len(decoder_out_norm)):#分母のシグマ
-        value=0.0
         print("分母"+str(math.log(1/label_reliability[i][1])))
         value+=math.log(1/label_reliability[i][1])
     decoder_out=decoder_out/value
