@@ -9,7 +9,7 @@ def main():
         j = 0  # カウント用
         a = np.array([[1.0] * 2] * 20)
         number = i
-        readtext = "xy2_data/xy_0.txt"
+        readtext = "xy0_data/xy_10.txt"
         f = open(readtext)  # readtextを読み込む
         alldata = f.read()
         f.close()
@@ -21,7 +21,8 @@ def main():
             a[j][0] = float(line_x)
             a[j][1] = float(line_y)
             j += 1
-        filename = "relative_xy_data/xy_%d.txt" % number
+        #filename = "test/xy_%d.txt" % number
+        filename = "test/xy_0.txt"
         with open(filename, mode='w') as file:  # 書き込み
             for k in range(20):
                 if(k<19):

@@ -93,7 +93,7 @@ def create_batch(trainx, trainy, batch_size=10):
 def main():
     filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/*")  # ファイル数を取得する
     filenum = len(filenum)
-    numline=sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/xy_0.txt')) #13
+    numline=sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/xy_1.txt')) #13
     trainX=[]
     trainY=[]
     for i in range(filenum): #ファイルの読み込み
@@ -130,7 +130,7 @@ def main():
     decoder_optimizer = SGD(decoder.parameters(), lr=0.01)
     # 学習開始
     batch_size = 15
-    for epoch in range(240):
+    for epoch in range(150):
         running_loss = 0.0
         for i in range(int(len(trainX) / batch_size)):
             encoder_optimizer.zero_grad()
@@ -162,7 +162,7 @@ def main():
             print("loss: " + str(running_loss))
     #学習終了
     #ここからテスト
-    text = "test/xy_188.txt"
+    text = "test/xy_0.txt"
     test_a = np.array([[1.0] * 2] * numline)
     f = open(text)  # ファイルを開く
     alldata = f.read()  # xy_i.txtを全部読み込む
@@ -197,6 +197,7 @@ def main():
     abstract = 0
     test_out = np.array(scaler.inverse_transform(test_out))
     abstract += np.sum(np.abs(testPredict - test_out))
+    print("正解"+str(test_out))
     print(abstract/10)
     # ここまで
 

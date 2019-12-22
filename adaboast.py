@@ -137,7 +137,7 @@ def main():
         decoder_optimizer = SGD(decoder.parameters(), lr=0.01)
         # 学習開始
         batch_size = 15
-        for epoch in range(150):
+        for epoch in range(15):
             running_loss = 0.0
             for i in range(int(len(trainX) / batch_size)):
                 encoder_optimizer.zero_grad()
