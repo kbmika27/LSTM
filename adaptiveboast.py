@@ -13,14 +13,25 @@ from torch.optim import SGD
 from sklearn.model_selection import train_test_split
 
 
-class ErrorWeight():
-    def errorweight(self,errorlist,p_label,weightlist):
-        error_rate = 0.0  # エラー率
-        print(len(errorlist))
-        for i in range(len(errorlist)):  # エラー率の計算
-            if (errorlist[i] > 1):
-                error_rate += weightlist[i]
-        return error_rate
+
+def errorcalculate(errorlist,weightlist): # エラー率の計算
+    error_rate = 0.0  # エラー率
+    for i in range(len(errorlist)):
+        if (errorlist[i] > 5):
+            error_rate += weightlist[i]
+    return error_rate
+
+def weightcalculate(errorlist,weightlist,error_reliability): #重みの計算
+    weightlist_sum = 0.0
+    for i in range(len(weightlist)):
+        if (errorlist[i] <= 5):
+            weightlist[i] = weightlist[i] * error_reliability
+        else:
+            weightlist[i] = weightlist[i] * 1
+        weightlist_sum += weightlist[i]
+    for j in range(len(weightlist)):
+        weightlist[j] = weightlist[j] / (weightlist_sum)
+    return weightlist
 
 class Main:
     def main(self):
@@ -39,8 +50,6 @@ class Main:
         adabX = []  # 入力　adaboost用の学習データ
         adabY = []  # 出力
         weightlist = []  # 重みを保存するlist
-        adab_weight = []  # 重みにラベルをつけたlist
-        weight = 0.0
         label_reliability = []  # 信頼度を入れるlist
         for i in range(filenum): #personiのadab用のデータ作り
             j = 0  # カウント用
@@ -64,7 +73,6 @@ class Main:
                                                          shuffle=False)  # 10*2と3*2 入力と出力
             adabX.append([adbtrain_in])  # 入力の2*10が120
             adabY.append(adbtrain_out)
-            #adab_weight.append(s)  # ラベルを重みにつけてる
         for i in range(len(adabX)):
             weight = 1.0 / len(adabX)  # 重みの初期値
             weightlist.append(weight)
@@ -99,23 +107,14 @@ class Main:
                     error = sum(error)
                     errorlist.append(error)
                 print("誤差" + str(errorlist))
-                errorweight = ErrorWeight()
-                error_rate= errorweight.errorweight(errorlist, p_label, weightlist)
+                print(len(errorlist))
+                error_rate=errorcalculate(errorlist,weightlist) #エラー率の計算
                 error_rate_list.append(error_rate)
             min_label=error_rate_list.index(min(error_rate_list)) #エラー率が最小になるラベルを取得
-            error_reliability=min(error_rate_list)*min(error_rate_list) #エラー率が最小になるラベルの信頼度計算
+            error_reliability=float(min(error_rate_list))*float(min(error_rate_list)) #エラー率が最小になるラベルの信頼度計算
+            print("い"+str(min(error_rate_list)))
             print("error list"+str(error_rate_list))
-            #重みの更新
-            weightlist_sum = 0.0
-            for i in range(len(weightlist)):
-                if (errorlist[i] <= 1):
-                    weightlist[i] = weightlist[i] * error_reliability
-                else:
-                    weightlist[i] = weightlist[i] * 1
-                weightlist_sum += weightlist[i]
-            for i in range(len(weightlist)):
-                weightlist[i] = weightlist[i] / (weightlist_sum)
-            #重みの更新終了
+            weightlist=weightcalculate(errorlist,weightlist,error_reliability) #重みの更新
             label_reliability.append([min_label,error_reliability]) #ラベルと信頼度を格納
         label_reliability=np.array(label_reliability)
         print(np.array(label_reliability))
