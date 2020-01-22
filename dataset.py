@@ -8,7 +8,7 @@ def main():
     # ファイルの書き込み
     a = np.array([[1.0] * 2] * 20)
     j = 0  # カウント用
-    text = "person0/xy_0.txt"
+    text = "xy2_data/xy_0.txt"
     f = open(text)  # ファイルの読み込み
     alldata = f.read()  # 全部読み込む
     f.close()
@@ -21,13 +21,13 @@ def main():
         a[j][1] = float(line_y)
         j += 1
     print(a)
-    for i in range(1, 200, 1):
+    for i in range(1, 500, 1):
         number = i
-        filename = "person0/xy_%d.txt" % number
+        filename = "xy2_data/xy_%d.txt" % number
         with open(filename, mode='w') as file:  # 書き込み
             for j in range(20):
-                x = a[j][0] + np.random.normal(loc=0.0, scale=2)  # 前のx
-                y = a[j][1] + np.random.normal(loc=0.0, scale=2)  # 前のy
+                x = a[j][0] + np.random.normal(loc=0.0, scale=1)  # 前のx
+                y = a[j][1] + np.random.normal(loc=0.0, scale=1)  # 前のy
                 if (j < 19):
                     file.write(str(x) + ',')
                     file.write(str(y) + '\n')

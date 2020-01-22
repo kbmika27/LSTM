@@ -15,16 +15,16 @@ from sklearn.model_selection import train_test_split
 
 
 def errorcalculate(errorlist,weightlist): # エラー率の計算
-    error_rate = 0.0  # エラー率
+    error_rate = 0.001  # エラー率 0割を防ぐために0.01足している
     for i in range(len(errorlist)):
-        if (errorlist[i] > 5):
+        if (errorlist[i] > 2.5):
             error_rate += weightlist[i]
     return error_rate
 
 def weightcalculate(errorlist,weightlist,error_reliability): #重みの計算
     weightlist_sum = 0.0
     for i in range(len(weightlist)):
-        if (errorlist[i] <= 5):
+        if (errorlist[i] <= 2.5):
             weightlist[i] = weightlist[i] * error_reliability
         else:
             weightlist[i] = weightlist[i] * 1
@@ -54,7 +54,7 @@ class Main:
         for i in range(filenum): #personiのadab用のデータ作り
             j = 0  # カウント用
             a = np.array([[1.0] * 2] * numline)
-            text = "person0/xy_%d.txt" % (i)
+            text = "person1/xy_%d.txt" % (i)
             f = open(text)  # ファイルを開く
             alldata = f.read()  # xy_i.txtを全部読み込む
             scaler = MinMaxScaler(feature_range=(0, 1))  # 正規化の準備
@@ -73,36 +73,41 @@ class Main:
                                                          shuffle=False)  # 10*2と3*2 入力と出力
             adabX.append([adbtrain_in])  # 入力の2*10が120
             adabY.append(adbtrain_out)
+        print("adab"+str(len(adabY)))
         for i in range(len(adabX)):
             weight = 1.0 / len(adabX)  # 重みの初期値
             weightlist.append(weight)
         #ここまでは合ってる
+        encoder2 = Encoder.Encoder(2, hidden_size, 2)
+        attention2 = Attention.Attention(2, hidden_size)
+        decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
         for epoch in range(2):  # 何個選ぶか T個
             error_rate_list = []  # 各lstmのエラー率を入れる
-            attention2 = Attention.Attention(2,hidden_size)
             print("あ"+str(weightlist))
             # エラー計算 これを各lstmに対してやる
             for p_label in range(3):
                 errorlist = []  # 各LSTMのエラー率を保存するlist
+                encoder2.load_state_dict(encoderstore[p_label], strict=False)  # encoder通過
+                decoder2.load_state_dict(decoderstore[p_label], strict=False)
                 print(str(p_label)+"回目")
-                for t in range(len(adabX)):  # 300
+                for t in range(len(adabX)):  #200
                     adab_d = torch.tensor(adabX[t]).float()  # 入力 1*10*2
                     adab_label = torch.tensor([adabY[t]]).float()  # 出力
-                    encoder2 = Encoder.Encoder(2, hidden_size, 2)
-                    decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
-                    encoder2.load_state_dict(encoderstore[p_label], strict=False)  # encoder通過
+                    #encoder2 = Encoder.Encoder(2, hidden_size, 2)
+                    #decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
+                    #encoder2.load_state_dict(encoderstore[p_label], strict=False)  # encoder通過
                     encoder_out, encoder_hid = encoder2(adab_d)
                     decoder_hid = encoder_hid
                     att_concat = attention2(adab_label, decoder_hid, encoder_out)  # attention通過
-                    decoder2.load_state_dict(decoderstore[p_label], strict=False)
-                    decoder_out = decoder2(att_concat)  # デコーダーを通過
+                    #decoder2.load_state_dict(decoderstore[p_label], strict=False)
+                    decoder_out = decoder2(att_concat)  # デコーダーを通過 1*20
                     decoder_out_np = []  # デコーダーから出てきたものを正規化元に戻すためのlist
-                    for i in range(len(decoder_out[0])):
-                        decoder_out_np.append(decoder_out[0][i].data.item())
+                    for o in range(len(decoder_out[0])):
+                        decoder_out_np.append(decoder_out[0][o].data.item())
                     decoder_out_np = np.reshape(decoder_out_np, [10, 2])  # 出力をnpに入れたもの
                     decoder_out_np = np.array(scaler.inverse_transform(decoder_out_np))  # 正規化を元に戻す
-                    adabY[t] = scaler.inverse_transform(adabY[t])  # 正解データ
-                    errornp = np.abs((decoder_out_np - adabY[t]) / adabY[t])  # 正解と出力の差/正解
+                    adab_answer=scaler.inverse_transform(adabY[t])  # 正解データ
+                    errornp = np.abs((decoder_out_np - adab_answer) / adab_answer)  # 正解と出力の差/正解
                     error = sum(errornp)  # 20個の誤差の合計
                     error = sum(error)
                     errorlist.append(error)
@@ -111,14 +116,14 @@ class Main:
                 error_rate=errorcalculate(errorlist,weightlist) #エラー率の計算
                 error_rate_list.append(error_rate)
             min_label=error_rate_list.index(min(error_rate_list)) #エラー率が最小になるラベルを取得
-            error_reliability=float(min(error_rate_list))*float(min(error_rate_list)) #エラー率が最小になるラベルの信頼度計算
-            print("い"+str(min(error_rate_list)))
+            error_reliability=min(error_rate_list)*min(error_rate_list) #エラー率が最小になるラベルの信頼度計算
             print("error list"+str(error_rate_list))
             weightlist=weightcalculate(errorlist,weightlist,error_reliability) #重みの更新
             label_reliability.append([min_label,error_reliability]) #ラベルと信頼度を格納
         label_reliability=np.array(label_reliability)
-        print(np.array(label_reliability))
-        filename="label_reliability/data0"
+        #print(np.array(label_reliability))
+        print(label_reliability)
+        filename="label_reliability/data1"
         np.save(filename,label_reliability)
         #with open(filename, mode='w') as file:  # 書き込み
         #    file.write(str(label_reliability))

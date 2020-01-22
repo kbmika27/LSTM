@@ -29,8 +29,6 @@ def main():
     for s in range(3): #loadしてlistに入れる
         encoderstore.append(torch.load('en_model%d'%(s)))
         decoderstore.append(torch.load('de_model%d'%(s)))
-    #mainmethod=adaptiveboast.Main()
-    #label_reliability=mainmethod.main()
 
     #ここからテスト
     text = "test/xy_0.txt"
@@ -51,31 +49,43 @@ def main():
     test_a = scaler.fit_transform(test_a)  # これを正規化するので合ってるのか？
     test_a = test_a.tolist()
     test_in, test_out = train_test_split(np.array(test_a), test_size=0.5, shuffle=False)  # 10*2と3*2 入力と出力
+    attention_input = []  # 1回目はencoder入力の最終段を格納
+    for i in range(len(test_in)):
+        attention_input.append(test_in[len(test_in) - 1])
+    attention_input = torch.tensor([attention_input]).float()
+    attention_input = torch.reshape(attention_input, [1, 10, 2])  # 1*10*2
     test_d = torch.tensor([test_in]).float()  #入力 1*10*2
-    print(test_d.shape)
     test_label=torch.tensor([test_out]).float() #出力
-
     # ここから出力の平均を取る
-    decoder_out_norm = []  # 分子10*2*2を入れておくlist
+    decoder_out_norm = []  # 分子10*2*3を入れておくlist
+    encoder2 = Encoder.Encoder(2, hidden_size, 2)
+    attention2 = Attention.Attention(2, hidden_size)
+    decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
     for i in range(3):  # 出力の平均をとる 識別器の数分回す
-        encoder2 = Encoder.Encoder(2, hidden_size, 2)
-        attention2 = Attention.Attention(2, hidden_size)
-        decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
-        # encoder2.load_state_dict(torch.load('en_model'),strict=False)
         encoder2.load_state_dict(encoderstore[i], strict=False)
+        decoder2.load_state_dict(decoderstore[i], strict=False)
+        prediction_output = []  # 10回分i_number番目の出力を格納
         encoder_out, encoder_hid = encoder2(test_d)
         decoder_hid = encoder_hid
-        att_concat = attention2(test_label, decoder_hid, encoder_out)
-        # decoder2.load_state_dict(torch.load('de_model'),strict=False)
-        decoder2.load_state_dict(decoderstore[i], strict=False)
-        decoder_out = decoder2(att_concat)  # デコーダーを通過
-        testnp = []  # lstmからの出力1*20を入れるlist
-        for j in range(len(decoder_out[0])):  # 20
-            testnp.append(decoder_out[0][j].data.item())  # 正規化されていない
-        testnp = np.reshape(testnp, [10, 2])
-        testnp = np.array(scaler.inverse_transform(testnp))  # 正規化を元に戻す
-        testnp = np.reshape(testnp, [10, 2])
-        decoder_out_norm.append(testnp)  # len2
+        for i_number in range(len(test_out)):
+            att_concat = attention2(attention_input, decoder_hid, encoder_out)
+            decoder_out = decoder2(att_concat)  # デコーダーを通過
+            testnp = []  # lstmからの出力1*20を入れるlist
+            for j in range(len(decoder_out[0])):  # 20
+                testnp.append(decoder_out[0][j].data.item())  # 正規化されていない
+            testnp = np.reshape(testnp, [10, 2])
+            testnp = np.array(scaler.inverse_transform(testnp))  # 正規化を元に戻す
+            testnp = np.reshape(testnp, [10, 2])
+            prediction_output.append(testnp[i_number])  # i_number番目の出力を保存
+            valuesame = []
+            for _ in range(len(test_out)):
+                valuesame.append(testnp[i_number])
+            attention_input = torch.tensor([valuesame]).float()  # 1 10 2
+        prediction_output = np.reshape(prediction_output, [10, 2])  # 出力結果
+        decoder_out_norm.append(prediction_output)  # len3
+    print(len(decoder_out_norm))
+    print("あ" + str(decoder_out_norm))  # len3
+            #ここまで
     for i in range(len(decoder_out_norm)):  # 分子のシグマ
         if (i == 0):
             decoder_value = decoder_out_norm[i]

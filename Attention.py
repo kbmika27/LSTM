@@ -15,12 +15,16 @@ class Attention(nn.Module):
         train_in=10
         train_out=10
         weight = np.array([[1.0] * train_in] * train_out)  # 3*10 an(n)を格納
-        for l in range(train_out):  # 3
+        for l in range(train_out):  # 10
             k_t_sum = 0  # 正規化するため分子を足す
             for k in range(train_in):  # 10
-                t = att_output[0][l].t()  # デコーダーの転置
-                k_t = torch.dot(t, encoder_output[0][k])  # 内積
-                k_t = math.exp(k_t.data.item())
+                #t = att_output[0][l].t()  # デコーダーの転置
+                k_t=0.0 #時々nanになるから0を与えておく
+                k_t = torch.dot(att_output[0][l], encoder_output[0][k])  # 内積
+                try:
+                    k_t = math.exp(k_t.data.item())
+                except OverflowError:
+                    k_t=float('inf')
                 weight[l][k] = k_t
                 k_t_sum += k_t
             for w in range(train_in):  # 正規化
