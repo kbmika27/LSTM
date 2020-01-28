@@ -16,7 +16,6 @@ import torch.nn as nn
 from torch.optim import SGD
 from sklearn.model_selection import train_test_split
 
-
 def main():
     hidden_size = 4  # 隠れ層
     encoderstore = [] #encoderの保存用リスト
@@ -70,6 +69,13 @@ def main():
         for i_number in range(len(test_out)):
             att_concat = attention2(attention_input, decoder_hid, encoder_out)
             decoder_out = decoder2(att_concat)  # デコーダーを通過
+            valuesame = [] #i_number番目を伸ばしてattentionに入れる
+            for _ in range(len(test_out)): #
+                valuesame.append(decoder_out[0][i_number * 2].data.item())
+                valuesame.append(decoder_out[0][i_number * 2 + 1].data.item())
+            valuesame = torch.tensor([valuesame])
+            valuesame = torch.reshape(valuesame, [1, 10, 2])
+            attention_input = valuesame
             testnp = []  # lstmからの出力1*20を入れるlist
             for j in range(len(decoder_out[0])):  # 20
                 testnp.append(decoder_out[0][j].data.item())  # 正規化されていない
@@ -77,10 +83,6 @@ def main():
             testnp = np.array(scaler.inverse_transform(testnp))  # 正規化を元に戻す
             testnp = np.reshape(testnp, [10, 2])
             prediction_output.append(testnp[i_number])  # i_number番目の出力を保存
-            valuesame = []
-            for _ in range(len(test_out)):
-                valuesame.append(testnp[i_number])
-            attention_input = torch.tensor([valuesame]).float()  # 1 10 2
         prediction_output = np.reshape(prediction_output, [10, 2])  # 出力結果
         decoder_out_norm.append(prediction_output)  # len3
     print(len(decoder_out_norm))
@@ -95,12 +97,16 @@ def main():
     decoder_out = decoder_value/3
     # ここまでで出力の平均計算終了
 
-    # ここから accuracyの計算
-    abstract = 0
     test_out = np.array(scaler.inverse_transform(test_out))
-    print("正解" + str(test_out))
-    abstract += np.sum(np.abs(decoder_out - test_out))
-    print(abstract / 10)
+    #ADEの計算 2嬢　ルート　たす　わる
+    ade_abstract = np.sqrt(np.square(np.abs(decoder_out - test_out)))
+    ade_sum = (np.sum(ade_abstract))/10
+    print("ADE: " + str(ade_sum))
+
+    # FDE
+    fde_abstract = np.abs(decoder_out[len(decoder_out) - 1] - test_out[len(test_out) - 1])
+    fde_sum = math.sqrt(np.sum(np.square(fde_abstract)))
+    print("FDE: " + str(fde_sum))
     # ここまで
 
 if __name__ == '__main__':

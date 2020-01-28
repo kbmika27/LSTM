@@ -1,5 +1,5 @@
 #coding:utf-8
-#pytorchの2次元LSTM
+#pytorchの2次元LSTM attentionなし LSTM実験用
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,7 +14,7 @@ def create_dataset(dataset,maxlen):
     dataX = np.array([[[1.0 for i in range(2)] for j in range(maxlen)] for k in range(len(dataset) - maxlen - 1)]) #全てに1.0を一旦入れる
     dataY = np.array([[1.0] * 2] * (len(dataset) - maxlen - 1))  #dataXを入れると出力されるもの
     #データを入れるfor文
-    for i in range(len(dataset) - maxlen - 1):
+    for i in range(len(dataset) - maxlen - 1): #105-6-1
         #a = np.array([[0] * 2] * maxlen)  # dataXの中の1つのセット aもdataX[i]も長さ3
         for j in range(maxlen):
            # a[j][0]=dataset[j][0]
@@ -106,7 +106,7 @@ def main():
     test_accuracy = 0.0
     train_accuracy = 0.0
     batch_size = 5
-    for epoch in range(400):  # training model.fit
+    for epoch in range(150):  # training model.fit
         running_loss = 0.0
         training_accuracy = 0.0
         for i in range(int(len(trainX)/batch_size)):  # 10
@@ -116,8 +116,6 @@ def main():
             d, label = create_batch(trainX, trainY, batch_size)  # dは3次元
             #print("label: "+str(label))
             output = model(d)  # tensor([[0.4513]]) だったのがoutput:tensor([[0.4040]], grad_fn=<AddmmBackward>)
-            print("output"+str(output))
-            print("label"+str(label))
             loss = criterion(output, label)  # 損失計算　labelは多分元のデータ
             loss.backward()
             optimizer.step()
@@ -180,6 +178,8 @@ def main():
         testPredict[i][0]=testPredict_x[i]
         testPredict[i][1]=testPredict_y[i]
     testPredict = np.array(scaler.inverse_transform(testPredict)) #正規化を元に戻す
+    print(testPredict)
+    print(testPredict.shape)
     for i in range(len(testPredict_x)):
         testPredict_x[i]=testPredict[i][0]
         testPredict_y[i]=testPredict[i][1]

@@ -27,14 +27,14 @@ def main():
     filenum = len(filenum)
     trainfilenum = int(filenum * 0.8)  # 8割学習
     numline = sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy0_data/xy_0.txt'))  # 13
-    for s in range(3): #loadしてlistに入れる
-        encoderstore.append(torch.load('en_model%d'%(s)))
-        decoderstore.append(torch.load('de_model%d'%(s)))
-    readtext = "label_reliability/data1.npy"
+    for s in range(8): #loadしてlistに入れる
+        encoderstore.append(torch.load('modelstore/en_model%d'%(s)))
+        decoderstore.append(torch.load('modelstore/de_model%d'%(s)))
+    readtext = "label_reliability/sugimura.npy"
     label_reliability=(np.load(readtext)).tolist()
     print(label_reliability)
     #ここからテスト
-    text = "test/xy_0.txt"
+    text = "test/xy_5.txt"
     test_a = np.array([[1.0] * 2] * numline)
     f = open(text)  # ファイルを開く
     alldata = f.read()  # xy_i.txtを全部読み込む
@@ -72,6 +72,13 @@ def main():
         for i_number in range(len(test_out)): #出力の長さ分回す
             att_concat = attention2(attention_input, decoder_hid, encoder_out)  # attentionを通過
             decoder_out = decoder2(att_concat)  # デコーダーを通過
+            valuesame=[]
+            for _ in range(len(test_out)): #
+                valuesame.append(decoder_out[0][i_number * 2].data.item())
+                valuesame.append(decoder_out[0][i_number * 2 + 1].data.item())
+            valuesame = torch.tensor([valuesame])
+            valuesame = torch.reshape(valuesame, [1, 10, 2])
+            attention_input=valuesame
             testnp = []  # lstmからの出力1*20を入れるlist
             for j in range(len(decoder_out[0])):  # 20
                 testnp.append(decoder_out[0][j].data.item())  # 正規化されていない
@@ -79,12 +86,7 @@ def main():
             testnp = np.array(scaler.inverse_transform(testnp))  # 正規化を元に戻す
             # print("np" + str(testnp[i_number]))
             prediction_output.append(testnp[i_number])  # i_number番目の出力を保存
-            valuesame = []
-            for _ in range(len(test_out)):
-                valuesame.append(testnp[i_number])
-            attention_input = torch.tensor([valuesame]).float()  # 1 10 2
         prediction_output=np.reshape(prediction_output,[10,2]) #出力結果
-        print("あ"+str(prediction_output)) #len2
         #ここまで合ってるはず
         prediction_output=[g * math.log(1 / label_reliability[i][1]) for g in prediction_output]  # 各出力結果にlog(1/信頼度)をかける
         prediction_output=np.reshape(prediction_output, [10, 2])
@@ -101,16 +103,20 @@ def main():
         value += math.log(1 / label_reliability[i][1])  # 1/信頼度を足す
         value += math.log(1 / label_reliability[i][1])  # 1/信頼度を足す
     decoder_out = decoder_out / value
-    print("deoder" + str(decoder_out))
+    print("deoder" + str(decoder_out))  #出力結果
     # ここまでで出力の平均計算終了
 
-    # ここから accuracyの計算
-    abstract = 0
     test_out = np.array(scaler.inverse_transform(test_out))
-    print("正解" + str(test_out))
-    abstract += np.sum(np.abs(decoder_out - test_out))
-    print(abstract / 10)
+    # ADEの計算 2嬢　ルート　たす　わる
+    ade_abstract = np.sqrt(np.square(np.abs(decoder_out - test_out)))
+    ade_sum = (np.sum(ade_abstract))/10
+    print("ADE: " + str(ade_sum))
     # ここまで
+
+    # FDE計算 出力結果の最終段と正解の最終段の差
+    fde_abstract=np.abs(decoder_out[len(decoder_out) - 1] - test_out[len(test_out) - 1])
+    fde_sum=math.sqrt(np.sum(np.square(fde_abstract)))
+    print("FDE: "+str(fde_sum))
 
 if __name__ == '__main__':
     main()

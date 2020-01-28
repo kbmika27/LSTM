@@ -1,4 +1,5 @@
 #coding:utf-8
+#こっちが買えてない方
 #pytorchの2次元ver encoder decoder attention
 import glob
 

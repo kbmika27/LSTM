@@ -1,5 +1,5 @@
 #coding:utf-8
-#学習済モデルを呼び出し、adaboastの学習をし、ラベルと信頼度を返す
+#学習済モデルを呼び出し、adaboastの学習をし、ラベルと信頼度を返す 実験で学習終わったあと使う
 import Encoder,Attention,Decoder
 import glob
 
@@ -11,8 +11,6 @@ from sklearn.preprocessing import MinMaxScaler
 import torch
 from torch.optim import SGD
 from sklearn.model_selection import train_test_split
-
-
 
 def errorcalculate(errorlist,weightlist): # エラー率の計算
     error_rate = 0.001  # エラー率 0割を防ぐために0.01足している
@@ -43,7 +41,7 @@ class Main:
         trainfilenum = int(filenum * 0.8)  # 8割学習 160
         adabfilenum = filenum - trainfilenum #40
         numline = sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy0_data/xy_0.txt'))  # 13
-        for s in range(3):  # loadしてlistに入れる
+        for s in range(8):  # loadしてlistに入れる
             encoderstore.append(torch.load('en_model%d' % (s)))
             decoderstore.append(torch.load('de_model%d' % (s)))
         # ここからadaboost
@@ -93,18 +91,33 @@ class Main:
                 for t in range(len(adabX)):  #200
                     adab_d = torch.tensor(adabX[t]).float()  # 入力 1*10*2
                     adab_label = torch.tensor([adabY[t]]).float()  # 出力
+                    attention_input=[] #attentionに入力する最終段を伸ばしたもの
+                    for _ in range(len(adabY[t])): #10
+                        attention_input.append(adabY[t][len(adabY[t])-1])
+                    attention_input=torch.tensor([attention_input]).float()
                     #encoder2 = Encoder.Encoder(2, hidden_size, 2)
                     #decoder2 = Decoder.Decoder(hidden_size * 2, 20)  # 6=2*3
                     #encoder2.load_state_dict(encoderstore[p_label], strict=False)  # encoder通過
                     encoder_out, encoder_hid = encoder2(adab_d)
                     decoder_hid = encoder_hid
-                    att_concat = attention2(adab_label, decoder_hid, encoder_out)  # attention通過
-                    #decoder2.load_state_dict(decoderstore[p_label], strict=False)
-                    decoder_out = decoder2(att_concat)  # デコーダーを通過 1*20
-                    decoder_out_np = []  # デコーダーから出てきたものを正規化元に戻すためのlist
-                    for o in range(len(decoder_out[0])):
-                        decoder_out_np.append(decoder_out[0][o].data.item())
-                    decoder_out_np = np.reshape(decoder_out_np, [10, 2])  # 出力をnpに入れたもの
+                    adab_out = np.array([[1.0] * 2] * 10)  # 10 2 出力を格納するlist
+                    for i_number in range(len(adabY[t])): #10回まわしてぐるぐるさせる
+                        att_concat = attention2(attention_input, decoder_hid, encoder_out)  # attention通過
+                        # decoder2.load_state_dict(decoderstore[p_label], strict=False)
+                        decoder_out = decoder2(att_concat)  # デコーダーを通過 1*20
+                        valuesame = []
+                        for _ in range(len(adabY[t])):
+                            valuesame.append(decoder_out[0][i_number * 2].data.item())
+                            valuesame.append(decoder_out[0][i_number * 2 + 1].data.item())
+                        valuesame=torch.tensor([valuesame])
+                        valuesame=torch.reshape(valuesame,[1,10,2])
+                        attention_input=valuesame
+                        adab_out[i_number][0]=decoder_out[0][i_number * 2].data.item()
+                        adab_out[i_number][1]=decoder_out[0][i_number * 2+1].data.item()
+                    decoder_out_np = []  # デコーダー
+                    # decoderから出てきたものを正規化元に戻すためのlist
+                    decoder_out_np=adab_out
+                    decoder_out_np=np.reshape(decoder_out_np,[10,2])
                     decoder_out_np = np.array(scaler.inverse_transform(decoder_out_np))  # 正規化を元に戻す
                     adab_answer=scaler.inverse_transform(adabY[t])  # 正解データ
                     errornp = np.abs((decoder_out_np - adab_answer) / adab_answer)  # 正解と出力の差/正解

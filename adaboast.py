@@ -1,5 +1,5 @@
 #coding:utf-8
-#pytorchの2次元ver encoder decoder attention
+#pytorchの2次元ver encoder decoder attention　これ使って学習を進める 完成形
 import glob
 
 import pandas as pd
@@ -102,7 +102,7 @@ def create_batch(trainx, trainy, batch_size=15):
 def main():
     encoderstore = [] #encoderの保存用リスト
     decoderstore = [] #decoderも保存用リスト
-    for s in range(1): #xy(i)_dataをs回ループ
+    for s in range(2,3,1): #xy(i)_dataをs回ループ
         filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/xy%d_data/*"%(s))  # ファイル数を取得する
         filenum = len(filenum)
         trainfilenum=int(filenum*0.8) #8割学習
@@ -113,6 +113,7 @@ def main():
         attention_input = []
         for i in range(trainfilenum):  # ファイルの読み込み
             j = 0  # カウント用
+            print(i)
             a = np.array([[1.0] * 2] * numline)
             text = "xy%d_data/xy_%d.txt" % (s,i)
             f = open(text)  # ファイルを開く
@@ -198,8 +199,8 @@ def main():
             #ここまでを一旦みてください
         encoderstore.append(encoder.state_dict())
         decoderstore.append(decoder.state_dict())
-        #torch.save(encoder.state_dict(),'en_model')  #学習済みモデルを保存
-        #torch.save(decoder.state_dict(),'de_model')
+        torch.save(encoder.state_dict(),'en_model%d'%(s))  #学習済みモデルを保存
+        torch.save(decoder.state_dict(),'de_model%d'%(s))
         #print("model"+str(encoderhidden))
         # 学習終了
     print("学習終了")

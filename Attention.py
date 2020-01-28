@@ -1,9 +1,9 @@
 #coding:utf-8
+#学習の時に使うAttention
 import torch
 import torch.nn as nn
 import numpy as np
 import math
-#アテンション
 class Attention(nn.Module):
     def __init__(self, inputDim, hiddenDim):  # 初期化
         super(Attention, self).__init__()
@@ -24,7 +24,7 @@ class Attention(nn.Module):
                 try:
                     k_t = math.exp(k_t.data.item())
                 except OverflowError:
-                    k_t=float('inf')
+                    k_t=0.0
                 weight[l][k] = k_t
                 k_t_sum += k_t
             for w in range(train_in):  # 正規化

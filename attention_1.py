@@ -90,7 +90,7 @@ def main():
 
     # 学習開始
     batch_size = 10
-    for epoch in range(500):
+    for epoch in range(50):
         running_loss = 0.0
         training_accuracy = 0.0
         for i in range(int(len(trainX) / batch_size)):
