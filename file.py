@@ -16,7 +16,7 @@ from torch.optim import SGD
 def main():
     # ファイルの書き込み
     j = 0  # カウント用
-    text = "tomtxt/tom-4.txt" #ここから
+    text = "gardentxt/mika-1.txt" #ここから
     f = open(text)  # ファイルの読み込み
     alldata = f.read()  # 全部読み込む
     f.close()
@@ -31,14 +31,15 @@ def main():
         a[j][0] = float(line_x)
         a[j][1] = float(line_y)
         j += 1
-    startnum=288 #スタートしたい番号-1
+    startnum=10 #スタートしたい番号-1
     count=startnum
-    interval_num=4 #何個おきか
+    interval_num=6 #何個おきか
     overlap_num=5 #データの中身が何個おきか
     for i in range(1,linenum-19*overlap_num, interval_num):
         count+=1
         number=1
-        filename = "test/xy_%d.txt" % count
+        #filename = "person/kobayakawa/xy_%d.txt" % count
+        filename="gardentxt/mika%d.txt"%count
         print(filename)
         with open(filename, mode='w') as file:  # 書き込み
             for j in range(20):

@@ -1,13 +1,12 @@
 #coding:utf-8
-import torch
-import torch.nn as nn
 #デコーダー
+import torch.nn as nn
 class Decoder(nn.Module):
-    def __init__(self,hiddenDim,outputDim):  #初期化
+    def __init__(self,hiddenDim,outputDim):
         super(Decoder,self).__init__()
-        self.bn1=nn.BatchNorm1d(outputDim) #バッチ正規化
-        self.output_layer = nn.Linear(hiddenDim, outputDim)  # 全結合層
+        self.bn1=nn.BatchNorm1d(outputDim)
+        self.output_layer = nn.Linear(hiddenDim, outputDim)
 
-    def forward(self, concat): #予測をする
+    def forward(self, concat):
         output = self.output_layer(concat[:, -1, :])
         return output

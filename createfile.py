@@ -16,7 +16,7 @@ def main():
         lines = alldata.split('\n')  # 改行で区切る
         for line in lines:  # 1行
             linedata = line.split(',')
-            line_x = linedata[0]  # 各行のx座標 str
+            line_x = linedata[0]  # 各行のx座標
             line_y = linedata[1]  # 各行のy座標
             a[j][0] = float(line_x)
             a[j][1] = float(line_y)

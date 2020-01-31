@@ -1,9 +1,9 @@
 #coding:utf-8
+#エンコーダクラス
 import torch
 import torch.nn as nn
-#エンコーダークラス
 class Encoder(nn.Module):
-    def __init__(self,inputDim,hiddenDim,outputDim):  #初期化
+    def __init__(self,inputDim,hiddenDim,outputDim):
         super(Encoder,self).__init__()
         self.rnn=nn.LSTM(input_size=inputDim,hidden_size=hiddenDim,batch_first = True)
 

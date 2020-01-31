@@ -36,14 +36,14 @@ class Main:
         hidden_size = 4  # 隠れ層
         encoderstore = []  # encoderの保存用リスト
         decoderstore = []  # decoderも保存用リスト
-        filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/person0/*")  # ファイル数を取得する 200
+        filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/person/kobayakawa/*")  # ファイル数を取得する 200
         filenum = len(filenum)
         trainfilenum = int(filenum * 0.8)  # 8割学習 160
         adabfilenum = filenum - trainfilenum #40
-        numline = sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy0_data/xy_0.txt'))  # 13
+        numline = sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/person/sugimura/xy_0.txt'))  # 13
         for s in range(8):  # loadしてlistに入れる
-            encoderstore.append(torch.load('en_model%d' % (s)))
-            decoderstore.append(torch.load('de_model%d' % (s)))
+            encoderstore.append(torch.load('modelstore/en_model%d' % (s)))
+            decoderstore.append(torch.load('modelstore/de_model%d' % (s)))
         # ここからadaboost
         adabX = []  # 入力　adaboost用の学習データ
         adabY = []  # 出力
@@ -52,7 +52,7 @@ class Main:
         for i in range(filenum): #personiのadab用のデータ作り
             j = 0  # カウント用
             a = np.array([[1.0] * 2] * numline)
-            text = "person1/xy_%d.txt" % (i)
+            text = "person/kobayakawa/xy_%d.txt" % (i)
             f = open(text)  # ファイルを開く
             alldata = f.read()  # xy_i.txtを全部読み込む
             scaler = MinMaxScaler(feature_range=(0, 1))  # 正規化の準備
@@ -118,7 +118,12 @@ class Main:
                     # decoderから出てきたものを正規化元に戻すためのlist
                     decoder_out_np=adab_out
                     decoder_out_np=np.reshape(decoder_out_np,[10,2])
+                    for width in range(2):
+                        for height in range(10):
+                            if(decoder_out_np[height][width]==float("inf")or decoder_out_np[height][width]==float("-inf")):
+                                decoder_out_np[height][width]=0.01
                     decoder_out_np = np.array(scaler.inverse_transform(decoder_out_np))  # 正規化を元に戻す
+                    decoder_out_np=np.where(decoder_out_np==float("nan"),0.5,decoder_out_np)
                     adab_answer=scaler.inverse_transform(adabY[t])  # 正解データ
                     errornp = np.abs((decoder_out_np - adab_answer) / adab_answer)  # 正解と出力の差/正解
                     error = sum(errornp)  # 20個の誤差の合計
@@ -136,7 +141,7 @@ class Main:
         label_reliability=np.array(label_reliability)
         #print(np.array(label_reliability))
         print(label_reliability)
-        filename="label_reliability/data1"
+        filename="label_reliability/data0"
         np.save(filename,label_reliability)
         #with open(filename, mode='w') as file:  # 書き込み
         #    file.write(str(label_reliability))

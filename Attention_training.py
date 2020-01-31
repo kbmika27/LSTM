@@ -1,5 +1,6 @@
 #coding:utf-8
-#pytorchの2次元ver encoder decoder 実験Attentionの学習に使う
+#pytorchの2次元ver encoder decoder
+#Attention付きLSTM 実験用
 import glob
 import Encoder,Decoder
 
@@ -22,68 +23,63 @@ class Attention(nn.Module):
         self.rnn = nn.LSTM(input_size=inputDim, hidden_size=hiddenDim, batch_first=True)
 
     def forward(self, inputs,hidden0,encoder_output):
-        att_output, (hidden, cell) = self.rnn(inputs, hidden0)  # LSTM層　隠れ状態のベクトル ここには全部コピーを入れる
+        att_output, (hidden, cell) = self.rnn(inputs, hidden0)
         train_in = 10
         train_out = 10
-        weight = np.array([[1.0] * train_in] * train_out)  # 3*10 an(n)を格納
+        weight = np.array([[1.0] * train_in] * train_out)
         batch_concat=[]
         for batch_number in range(15):
             for l in range(train_out):  # 3
-                k_t_sum = 0  # 正規化するため分子を足す
+                k_t_sum = 0
                 for k in range(train_in):  # 10
                     k_t = torch.dot(att_output[batch_number][l], encoder_output[batch_number][k])  # 内積
                     try:
                         k_t = math.exp(k_t.data.item())
                     except OverflowError:
                         k_t=0.0
-                        #k_t = float('inf')
                     weight[l][k] = k_t
                     k_t_sum += k_t
                 for w in range(train_in):  # 正規化
                     weight[l][k] = weight[l][k] / k_t_sum
-            cn = []  # 4*1が3つ格納されるはず c0 c1 c2
-            for l in range(train_out):  # 3
+            cn = []
+            for l in range(train_out):
                 cn_sum = 0
-                for k in range(train_in):  # 10
+                for k in range(train_in):
                     for h in range(4):
                         encoder_output[batch_number][k][h] = weight[l][k] * encoder_output[batch_number][k][h]
                     cn_sum += encoder_output[batch_number][k]  # m=0~10のシグマ
-                cn.append(cn_sum)  # .data付けても付けなくてもOK!
+                cn.append(cn_sum)
             concatlist = []
             for c in range(train_out):
-                concat = torch.cat([cn[c], att_output[batch_number][c]], dim=0)  # 8*1のtensor型
+                concat = torch.cat([cn[c], att_output[batch_number][c]], dim=0)
                 concatlist.append(concat.detach().numpy())
-            #concatlist = torch.tensor([concatlist]).float()
             batch_concat.append((concatlist))
         batch_concat=torch.tensor([batch_concat]).float()
         batch_concat=torch.reshape(batch_concat[0],[15,10,8])
         return batch_concat
 
-#バッチ化する
+#バッチ化
 def create_batch(trainx, trainy, batch_size=10):
-    #trainX、trainYを受け取ってbatchX、batchYを返す
     batchX=[]
     batchY=[]
     for _ in range(batch_size):
         idx=np.random.randint(0,len(trainx)-1)
         batchX.append(trainx[idx])
         batchY.append(trainy[idx])
-    #print(batchX)
     batchX=np.reshape(batchX,[15,10,2])
-    #print(batchX)
     m=nn.BatchNorm2d(15)
     batchX=torch.tensor(batchX).float()
     batchY=torch.tensor(batchY).float()
     return batchX,batchY
 
 def main():
-    filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/*")  # ファイル数を取得する
+    filenum = glob.glob("/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/*")  # ファイル数の取得
     filenum = len(filenum)
     numline=sum(1 for line in open('/Users/kobayakawamika/PycharmProjects/LSTM/xy1_data/xy_1.txt')) #13
     trainX=[]
     trainY=[]
     attention_input = []
-    for i in range(filenum): #ファイルの読み込み
+    for i in range(filenum): #ファイル読み込み
         j=0 #カウント用
         a=np.array([[1.0] * 2] * numline)
         text="xy1_data/xy_%d.txt" % (i)
@@ -91,15 +87,15 @@ def main():
         alldata = f.read()  # xy_i.txtを全部読み込む
         scaler = MinMaxScaler(feature_range=(0, 1)) #正規化の準備
         f.close()
-        lines = alldata.split('\n')  # 改行で区切る
+        lines = alldata.split('\n') #改行で区切る
         for line in lines: #1行
             linedata =line.split(',')
-            line_x=linedata[0] #各行のx座標 str
+            line_x=linedata[0] #各行のx座標
             line_y=linedata[1] #各行のy座標
             a[j][0]=float(line_x)
             a[j][1]=float(line_y)
             j+=1
-        a = scaler.fit_transform(a)  # これを正規化するので合ってるのか？
+        a = scaler.fit_transform(a)
         a = a.tolist()
         train_in, train_out = train_test_split(np.array(a), test_size=0.5, shuffle=False)  # 10*2と3*2 入力と出力
         attention_in = []
@@ -108,15 +104,14 @@ def main():
         attention_input.append(attention_in)
         trainX.append(train_in)
         trainY.append(train_out)
-    trainX=np.array(trainX) #500*10(maxlen)*2
-    trainY=np.array(trainY) #500*3*2
+    trainX=np.array(trainX)
+    trainY=np.array(trainY)
     attention_input = np.array(attention_input)
 
-    # encoder,decoder
     hidden_size = 4  # 隠れ層
     encoder = Encoder.Encoder(2, hidden_size,2)
     attention=Attention(2,hidden_size)
-    decoder = Decoder.Decoder(hidden_size*2, 20) #6=2*3
+    decoder = Decoder.Decoder(hidden_size*2, 20)
     criterion = nn.MSELoss()
     encoder_optimizer = SGD(encoder.parameters(), lr=0.01)  # optimizerの初期化
     attention_optimizer = SGD(attention.parameters(), lr=0.01)
@@ -129,24 +124,21 @@ def main():
             encoder_optimizer.zero_grad()
             attention_optimizer.zero_grad()
             decoder_optimizer.zero_grad()
-            #d = torch.tensor([trainX[i]]).float()  # 入力 1*10*2 バッチ化してない方
-            #label = torch.tensor([trainY[i]]).float() #出力 1*3*2
+            #d = torch.tensor([trainX[i]]).float()  # 入力
+            #label = torch.tensor([trainY[i]]).float() #出力 　バッチ化しない時に利用
             d, attention_label = create_batch(trainX, attention_input, batch_size)
             label, nonuse = create_batch(trainY, trainY, batch_size)
-            #ここでバッチ正則化
-            encoder_output,encoder_hidden=encoder(d) #エンコーダーを通過 4*10
+            encoder_output,encoder_hidden=encoder(d) #エンコーダーを通過
             decoder_hidden = encoder_hidden
-            # ここから attentionをぐるぐる回す
-            train_out_batch = np.array([[[1.0] * 2] * 10] * batch_size)  # 15 10 2 出力
-            for i_number in range(len(train_out)):  # 10
-                concat = attention(attention_label, decoder_hidden, encoder_output)  # アテンションを通過 15 10 2
-                # print("concat"+str(concat))
-                decoder_output = decoder(concat)  # decodertensor([[0.3728, 0.1049, 0.1042]]]
+            # ここから attention
+            train_out_batch = np.array([[[1.0] * 2] * 10] * batch_size)
+            for i_number in range(len(train_out)):
+                concat = attention(attention_label, decoder_hidden, encoder_output)
+                decoder_output = decoder(concat)
                 valuesame_batch = []
                 for batch_number in range(15):
                     train_out_batch[batch_number][i_number][0] = decoder_output[batch_number][i_number * 2].data.item()
                     train_out_batch[batch_number][i_number][1] = decoder_output[batch_number][i_number * 2 + 1].data.item()
-                    # train_output.append([decoder_output[batch_number][i_number * 2].data.item(),decoder_output[batch_number][i_number * 2 + 1].data.item()])
                     valuesame = []  # i番目を伸ばしたlist
                     for _ in range(len(train_out)):
                         valuesame.append(decoder_output[batch_number][i_number * 2].data.item())
@@ -155,9 +147,9 @@ def main():
                 attention_label = valuesame_batch
                 attention_label = torch.tensor(attention_label).float()
                 attention_label = torch.reshape(attention_label, [batch_size, 10, 2])
-            #attentionのぐるぐるここまで
+            #ここまで　attention
             label = torch.tensor(label).float()
-            train_out_batch = torch.tensor(train_out_batch, requires_grad=True).float()  # grad_fn=<CopyBackwards>
+            train_out_batch = torch.tensor(train_out_batch, requires_grad=True).float()
             loss = criterion(label, train_out_batch)
             loss.backward()
             encoder_optimizer.step()
@@ -165,7 +157,7 @@ def main():
             decoder_optimizer.step()
             running_loss += loss.item()
         print('%d loss: %.3f' % (epoch + 1, running_loss))
-    torch.save(encoder.state_dict(), 'att_en_model' )  # 学習済みモデルを保存
+    torch.save(encoder.state_dict(), 'att_en_model' )
     torch.save(decoder.state_dict(), 'att_de_model' )
     print("学習終了")
 
